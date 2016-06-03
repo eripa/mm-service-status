@@ -89,12 +89,17 @@ func main() {
 		} else {
 			fmt.Printf("Checking service status for order: %s name: %s store: %s\n", *orderID, *lastName, *storeID)
 			res := getURI(*orderID, *lastName, *storeID)
-			status := result{
-				name:    res[0],
-				product: res[1],
-				status:  res[2],
+			if len(res) != 3 {
+				fmt.Println("Empty result")
+				os.Exit(1)
+			} else {
+				status := result{
+					name:    res[0],
+					product: res[1],
+					status:  res[2],
+				}
+				printStatus(status)
 			}
-			printStatus(status)
 		}
 	}
 
