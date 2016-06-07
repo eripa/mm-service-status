@@ -10,7 +10,11 @@ Can be used in conjunction with crontab + grep and something like Pushover to no
 
     go get github.com/eripa/mm-service-status
 
-    mm-service-status  --lastname "Ripa" --order-id 128732 --store-id 1157
+    # get your store ID
+    mm-service-status --list-stores
+
+    # check status for store 1157 (Helsingborg as of writing this)
+    mm-service-status --lastname "Ripa" --order-id 128732 --store-id 1157
 
     Checking service status for order: 128732 name: Ripa store: 1157
     Name: ERIC RIPA

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -12,7 +14,7 @@ import (
 	"github.com/jawher/mow.cli"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 type result struct {
 	name    string
@@ -62,10 +64,56 @@ func getURI(orderID string, lastName string, outletID string) []string {
 	}
 }
 
+func getStores() map[string]int {
+	uri := "https://www.mediamarkt.se/webapp/wcs/stores/servlet/MultiChannelMARepairStatus"
+
+	resp, err := http.Get(uri)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	z := html.NewTokenizer(resp.Body)
+	res := make(map[string]int)
+	for {
+		tt := z.Next()
+
+		switch {
+		case tt == html.ErrorToken:
+			// End of the document, we're done
+			return res
+		case tt == html.StartTagToken:
+			token := z.Token()
+
+			isAnchor := token.Data == "option"
+			if isAnchor {
+				// z.Next() // Go to the actual text inside the tag
+				for _, a := range token.Attr {
+					value, err := strconv.Atoi(a.Val)
+					if err == nil && a.Key == "value" {
+						// If the Key is 'value' and the Value is an Int, it's likely a store
+						z.Next()
+						token = z.Token()
+						res[token.Data] = value
+					}
+				}
+			}
+		}
+	}
+}
+
 func printStatus(status result) {
 	fmt.Printf("Name: %s\n", status.name)
 	fmt.Printf("Product: %s\n", status.product)
 	fmt.Printf("Status: %s\n", status.status)
+}
+
+func printStoreIDs(stores map[string]int) {
+	fmt.Printf("%*s: %s\n", 30, "Store Name", "Store ID")
+	fmt.Printf("%s\n", strings.Repeat("=", 50))
+	for store, id := range stores {
+		fmt.Printf("%*s: %d\n", 30, store, id)
+	}
 }
 
 func main() {
@@ -83,9 +131,15 @@ func main() {
 
 	app.Action = func() {
 		if *versionCheck {
-			fmt.Println(os.Args[0], version)
+			fmt.Println(path.Base(os.Args[0]), version)
 		} else if *listStores {
-			fmt.Println("Stores:")
+			stores := getStores()
+			if len(stores) == 0 {
+				fmt.Println("Empty result")
+				os.Exit(1)
+			} else {
+				printStoreIDs(stores)
+			}
 		} else {
 			fmt.Printf("Checking service status for order: %s name: %s store: %s\n", *orderID, *lastName, *storeID)
 			res := getURI(*orderID, *lastName, *storeID)
